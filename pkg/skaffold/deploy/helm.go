@@ -202,10 +202,10 @@ func (h *HelmDeployer) deployRelease(ctx context.Context, out io.Writer, r lates
 
 	var args []string
 	if !isInstalled {
-		args = append(args, "install", "--name", releaseName)
+		args = append(args, "install", releaseName)
 		args = append(args, h.Flags.Install...)
 	} else {
-		args = append(args, "upgrade", releaseName)
+		args = append(args, "upgrade", "--install", releaseName)
 		args = append(args, h.Flags.Upgrade...)
 		if h.forceDeploy {
 			args = append(args, "--force")
@@ -457,11 +457,17 @@ func (h *HelmDeployer) getDeployResults(ctx context.Context, namespace string, r
 
 func (h *HelmDeployer) deleteRelease(ctx context.Context, out io.Writer, r latest.HelmRelease) error {
 	releaseName, err := evaluateReleaseName(r.Name)
+	var ns string
+	if h.namespace != "" {
+		ns = h.namespace
+	} else if r.Namespace != "" {
+		ns = r.Namespace
+	}
 	if err != nil {
 		return errors.Wrap(err, "cannot parse the release name template")
 	}
 
-	if err := h.helm(ctx, out, false, "delete", releaseName, "--purge"); err != nil {
+	if err := h.helm(ctx, out, false, "uninstall", releaseName, "--namespace", ns); err != nil {
 		logrus.Debugf("deleting release %s: %v\n", releaseName, err)
 	}
 
